@@ -1,0 +1,6 @@
+name: RPG
+version: 1.0
+main: me.messageofdeath.RPG.RPG
+depend: [Citizens]
+commands:
+  rpg:

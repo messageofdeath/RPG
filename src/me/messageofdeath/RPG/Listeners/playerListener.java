@@ -1,10 +1,10 @@
 package me.messageofdeath.RPG.Listeners;
 
-import java.io.IOException;
-
 import me.messageofdeath.RPG.API.Api;
-import me.messageofdeath.RPG.API.Conf;
+import me.messageofdeath.RPG.API.Button;
+import me.messageofdeath.RPG.API.Quest;
 import me.messageofdeath.RPG.API.User;
+import net.citizensnpcs.resources.npclib.NPCManager;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -13,17 +13,17 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerChatEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 public class playerListener implements Listener {
 	
-	@SuppressWarnings("static-access")
 	@EventHandler
 	public void interact(PlayerInteractEvent event) {
 		Action action = event.getAction();
@@ -33,7 +33,7 @@ public class playerListener implements Listener {
 				Block block = event.getClickedBlock();
 				if(block.getType() == Material.STONE_BUTTON) {
 					String loc = block.getLocation().getBlockX() + "," + block.getLocation().getBlockY() + "," + block.getLocation().getBlockZ();
-					Conf config = new Conf(null, null, null, loc);
+					Button config = new Button(loc);
 					if(!Api.getPlayers().contains(player.getName()) && !Api.getPlayer().contains(player.getName()) && !Api.getPlay().contains(player.getName()) && !Api.getPl().contains(player.getName())) {
 						if(config.getButtonLocation() != null) {
 							String[] d = config.getButtonLocation().split(",");
@@ -44,9 +44,12 @@ public class playerListener implements Listener {
 							float yaw = Float.parseFloat(d[4]);
 							float pitch = Float.parseFloat(d[5]);
 							player.teleport(new Location(world, x, y, z, yaw, pitch));
-							player.sendMessage(ChatColor.GREEN + "Welcome to the " + ChatColor.DARK_RED + config.getButtonName());
-							if(config.getButtonMessage() != null) {player.sendMessage(ChatColor.GOLD + config.getButtonMessage());}
+							player.sendMessage(ChatColor.GREEN + "Welcome to " + ChatColor.DARK_RED + config.getButtonName());
+							String[] dd = config.getButtonMessage().split(" ");
+							if(dd[0].matches("[a-zA-z0-9]+")) {player.sendMessage(ChatColor.GOLD + config.getButtonMessage());}
 							if(player.getGameMode() == GameMode.CREATIVE)event.setCancelled(true);
+						}else{
+							player.sendMessage("No Location Set!");
 						}
 					}
 				}
@@ -58,13 +61,7 @@ public class playerListener implements Listener {
 					Block block = event.getClickedBlock();
 					if(block.getType() == Material.STONE_BUTTON) {
 						String loc = block.getLocation().getBlockX() + "," + block.getLocation().getBlockY() + "," + block.getLocation().getBlockZ();
-						Conf config = new Conf(null, null, null, loc);
-						Api.loc = loc;
-						if(Api.getMessage() != null)config.setButtonMessage(Api.getMessage().replace("_", " "));
-						config.setButtonName(Api.getName());
-						Api.poop = "";
-						Api.poop1 = "";
-						config.save();
+						Api.d = loc;
 						player.sendMessage(ChatColor.GREEN + "Step 1: Done! Step 2: type /rpg setlocation for where this button will teleport to.");
 						if(player.getGameMode() == GameMode.CREATIVE)event.setCancelled(true);
 					}else{
@@ -75,13 +72,9 @@ public class playerListener implements Listener {
 					Block block = event.getClickedBlock();
 					if(block.getType() == Material.STONE_BUTTON) {
 						String loc = block.getLocation().getBlockX() + "," + block.getLocation().getBlockY() + "," + block.getLocation().getBlockZ();
-						Api.getConfig().set("ButtonLocations." + loc, null);
+						Button button = new Button(loc);
+						button.deleteButton();
 						Api.getPlayer().remove(player.getName());
-						try {
-							Api.getConfig().save(Api.getPlugin().CFile);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
 						player.sendMessage(ChatColor.GOLD + "Successfully deleted button!");
 					}else{
 						player.sendMessage(ChatColor.RED + "Please select a button.");
@@ -91,11 +84,10 @@ public class playerListener implements Listener {
 					Block block = event.getClickedBlock();
 					if(block.getType() == Material.STONE_BUTTON) {
 						String loc = block.getLocation().getBlockX() + "," + block.getLocation().getBlockY() + "," + block.getLocation().getBlockZ();
-						Conf config = new Conf(null, null, null, loc);
+						Button config = new Button(loc);
 						Api.getPlay().remove(player.getName());
 						config.setButtonName(Api.getName());
 						config.setButtonMessage(Api.getMessage());
-						config.save();
 						player.sendMessage(ChatColor.GOLD  + "Successfully set the message to the button!");
 						if(player.getGameMode() == GameMode.CREATIVE)event.setCancelled(true);
 					}else{
@@ -120,19 +112,16 @@ public class playerListener implements Listener {
 	@EventHandler
 	public void death(PlayerDeathEvent event) {
 		Player player = event.getEntity();
-		if(player.getName().equalsIgnoreCase("bandit"))event.setDeathMessage("");
+		if(NPCManager.isNPC((Entity)player))if(player.getName().equalsIgnoreCase("bandit"))event.setDeathMessage("");
 	}
 	
-	@SuppressWarnings("static-access")
 	@EventHandler
-	public void chat(PlayerChatEvent event) {
+	public void chat(AsyncPlayerChatEvent event) {
 		User user = Api.getUser(event.getPlayer().getName());
 		if(Api.getObject().contains(user.getName())) {
 			Api.getObject().remove(user.getName());
-			String[] object = Api.getObject1().split(",");
-			Conf config = new Conf(object[0], object[1], object[2], null);
-			config.setObjective(event.getMessage());
-			config.save();
+			Quest quest = new Quest(Integer.parseInt(Api.object1));
+			quest.setObjective(event.getMessage());
 			user.sendMsg(ChatColor.GOLD + "Successfully set the objective!");
 			event.setCancelled(true);
 		}
@@ -142,23 +131,13 @@ public class playerListener implements Listener {
 				user.setWaiting(false);
 				user.setActiveQuest(user.getPendingQuest());
 				user.setPendingQuest(0);
-				try {
-					Api.getDatabase().save(Api.getPlugin().DBFile);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
 				event.setCancelled(true);
 				return;
 			}
 			if(event.getMessage().equalsIgnoreCase("decline")) {
 				user.sendMsg(ChatColor.DARK_RED + "You have declined the quest, come again next time!");
 				user.setPendingQuest(0);
-				user.setQuest("0");
-				try {
-					Api.getDatabase().save(Api.getPlugin().DBFile);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				user.setQuest(0);
 				user.setWaiting(false);
 				event.setCancelled(true);
 				return;

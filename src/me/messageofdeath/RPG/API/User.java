@@ -18,7 +18,7 @@ public class User {
 		this.name = name;
 		this.player = Bukkit.getServer().getPlayer(name);
 	}
-	// Names
+	// Name
 	public String getName() {return name;}
 	
 	// Permission

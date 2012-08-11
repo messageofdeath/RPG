@@ -1,6 +1,7 @@
 package me.messageofdeath.RPG.API;
 
-import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 
 import org.bukkit.Bukkit;
@@ -32,19 +33,13 @@ public class User {
 	public void sendQuest(Quest config) {
 		sendMsg(ChatColor.GOLD + "Quest: " + ChatColor.GREEN + config.getQuestName());
 		sendMsg(ChatColor.GOLD + "Objectives: " + ChatColor.GRAY + config.getObjective());
-		sendMsg(ChatColor.GOLD + "Requirement: " + ChatColor.GRAY + config.getRequirementItem().getAmount() + " " + config.getRequirementItem().getType().name().toLowerCase().replace("_", " ") + "(s)");
+		if(config.getRequirementItem() != null)sendMsg(ChatColor.GOLD + "Requirement: " + ChatColor.GRAY + config.getRequirementItem().getAmount() + " " + config.getRequirementItem().getType().name().toLowerCase().replace("_", " ") + "(s)");
 		String reward = ChatColor.GOLD + "Reward: " + ChatColor.GRAY;
 		if(config.getRewardMoney() != 0.0) {
 			Eco eco = new Eco(getName(), config.getRewardMoney());
 			reward = reward.concat(eco.getFormat());
+			sendMsg(reward);
 		}
-		if(config.getRewardItem() != null) {
-			if(config.getRewardMoney() != 0.0)reward = reward.concat(" " + config.getRewardItem().getType().name().toLowerCase().replace("_", " ")); 
-			else reward = reward.concat(config.getRewardItem().getType().name().toLowerCase().replace("_", " "));
-		}
-		if(config.getRewardItem() == null && config.getRewardMoney() == 0.0) {
-			sendMsg(ChatColor.GOLD + "Reward: " + ChatColor.GRAY + "No Reward");
-		}else sendMsg(reward);
 		sendMsg(ChatColor.DARK_RED + "Do you " + ChatColor.GOLD + "Accept" + ChatColor.DARK_RED + " or " + ChatColor.GOLD + "Decline" + ChatColor.DARK_RED + " this Quest?");
 	}
 	
@@ -73,32 +68,96 @@ public class User {
 		}return false;
 	}
 	
-	public void setLocation(String loc) {Api.getDatabase().set("Users." + name + ".Location", loc);}
-	public String getLocation() {return Api.getDatabase().getString("Users." + name + ".Location");}
-	
 	// Checking if null
-	public boolean isImplemented() {if(Api.getDatabase().isSet("Users." + name) == true)return true;return false;}
+	public boolean isImplemented() {
+		ResultSet rs = Api.getMySQL().query("Select Name FROM Quests_Users WHERE Name = '"+name+"'");
+        try {
+            if (rs.first()) {
+                try {
+                    if(rs.getString("Name") != null) {
+                    	return true;
+                    }return false;
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (SQLException e) {
+       
+            e.printStackTrace();
+        }
+        return false;
+	}
 	
-	@SuppressWarnings("static-access")
-	public void addToImplemented() {setActiveQuest(0);setPendingQuest(0);setCompletedQuests(0);setQuest("0");try {Api.getDatabase().save(Api.getPlugin().DBFile);} catch (IOException e) {e.printStackTrace();}}
+	public void addToImplemented() {
+		Api.getMySQL().query("INSERT INTO Quests_Users (Name, ActiveQuest, PendingQuest, CompletedQuests, Quest) VALUES ('"+name+"', 0, 0, '0', '0');");
+	}
 	
 	// Database
-	public int getPendingQuest() {return Api.getDatabase().getInt("Users." + name + ".PendingQuest");}
+	public int getPendingQuest() {
+		ResultSet rs = Api.getMySQL().query("Select * FROM Quests_Users WHERE Name = '"+name+"'");
+		try {
+			if(rs.first()) {
+				return rs.getInt("PendingQuest");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
 	
-	public void setPendingQuest(int quest) {Api.getDatabase().set("Users." + name + ".PendingQuest", quest);}
+	public void setPendingQuest(int quest) {
+		Api.getMySQL().query("UPDATE Quests_Users SET PendingQuest = "+quest+" WHERE Name = '"+name+"'");
+	}
 	
-	public int getActiveQuest() {return Api.getDatabase().getInt("Users." + name + ".ActiveQuest");}
+	public int getActiveQuest() {
+		ResultSet rs = Api.getMySQL().query("Select * FROM Quests_Users WHERE Name = '"+name+"'");
+		try {
+			if(rs.first()) {
+				return rs.getInt("ActiveQuest");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
 	
-	public void setActiveQuest(int quest) {Api.getDatabase().set("Users." + name + ".ActiveQuest", quest);}
+	public void setActiveQuest(int quest) {
+		Api.getMySQL().query("UPDATE Quests_Users SET ActiveQuest = "+quest+" WHERE Name = '"+name+"'");
+	}
 	
-	public String getCompletedQuests() {return Api.getDatabase().getString("Users." + name + ".CompletedQuests");}
+	public String getCompletedQuests() {
+		ResultSet rs = Api.getMySQL().query("Select * FROM Quests_Users WHERE Name = '"+name+"'");
+		try {
+			if(rs.first()) {
+				return rs.getString("CompletedQuests");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 	
-	public void setCompletedQuests(String quests) {Api.getDatabase().set("Users." + name + ".CompletedQuests", quests);}
+	public void setCompletedQuests(String quests) {
+		Api.getMySQL().query("UPDATE Quests_Users SET CompletedQuests = '"+quests+"' WHERE Name = '"+name+"'");
+	}
 	
-	public void setCompletedQuests(int quest) {Api.getDatabase().set("Users." + name + ".CompletedQuests", quest);}
+	public void setCompletedQuests(int quest) {
+		Api.getMySQL().query("UPDATE Quests_Users SET CompletedQuests = "+quest+" WHERE Name = '"+name+"'");
+	}
 	
-	public String getQuest() {return Api.getDatabase().getString("Users." + name + ".Quest");}
+	public int getQuest() {
+		ResultSet rs = Api.getMySQL().query("Select * FROM Quests_Users WHERE Name = '"+name+"'");
+		try {
+			if(rs.first()) {
+				return rs.getInt("Quest");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
 	
-	public void setQuest(String quest) {Api.getDatabase().set("Users." + name + ".Quest", quest);}
-	public void setQuest(int quest) {Api.getDatabase().set("Users." + name + ".Quest", quest);}
+	public void setQuest(int quest) {
+		Api.getMySQL().query("UPDATE Quests_Users SET Quest = "+quest+" WHERE Name = '"+name+"'");
+	}
 }

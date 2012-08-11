@@ -1,5 +1,7 @@
 name: RPG
 version: 1.0
+author: messageofdeath
+authors: [hammale]
 main: me.messageofdeath.RPG.RPG
 depend: [Citizens]
 commands:

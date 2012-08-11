@@ -55,9 +55,9 @@ public class RPG extends JavaPlugin {
 			log("Config.yml loaded");
 			log("Hooking into MySQL!");
 			sqlConnection();
-	        sqlDoesDatabaseExist();
-	        log("is now connected to MySQL!");
-	        log("Hooking into Vault economy!");
+			sqlDoesDatabaseExist();
+			log("is now connected to MySQL!");
+			log("Hooking into Vault economy!");
 			setupEconomy();
 			log("Hooked into Vault economy!");
 			log("is now enabled!");

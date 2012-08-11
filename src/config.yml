@@ -1,23 +1,7 @@
-Quest Amount: 1
-Quest list:
-- 1,Item
-Quests:
-  '1':
-    Quests:
-      '1':
-        Quest:
-          Name: Making Money
-          Objective: Obtain 3 iron!
-          Quest Id: 1
-          Quest Type: Item
-        Reward:
-          Money: 100.0
-          Item:
-            ==: org.bukkit.inventory.ItemStack
-            type: null
-            amount: 0
-        Requirements:
-          Item:
-            ==: org.bukkit.inventory.ItemStack
-            type: IRON_INGOT
-            amount: 3
+MySQL:
+  Host: 127.0.0.1
+  Port: 3306
+  Database: Minecraft
+  User: root
+  Password: ''
+Quest Amount: 0

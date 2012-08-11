@@ -3,7 +3,8 @@ package me.messageofdeath.RPG.Commands;
 import java.util.ArrayList;
 
 import me.messageofdeath.RPG.API.Api;
-import me.messageofdeath.RPG.API.Conf;
+import me.messageofdeath.RPG.API.Button;
+import me.messageofdeath.RPG.API.Quest;
 import me.messageofdeath.RPG.API.User;
 
 import org.bukkit.ChatColor;
@@ -37,20 +38,11 @@ public class rpgCommand implements CommandExecutor {
 			commands.add("deletequest");
 			commands.add("newquest");
 			if(args.length == 1) {
-				if(args[0].equalsIgnoreCase("save")) {
-					int x = player.getLocation().getBlockX();
-					int y = player.getLocation().getBlockY();
-					int z = player.getLocation().getBlockZ();
-					user.setLocation(player.getLocation().getWorld().getName() + "," + x + "," + y + "," + z);
-					Api.saveDatabase();
-					user.sendMsg(ChatColor.GOLD + "Successfully saved Location!");
-				}
 				if(args[0].equalsIgnoreCase("objective")) {
 					if(user.getActiveQuest() != 0) {
-						String[] stuff = user.getQuest().split(",");
-						Conf config = new Conf(stuff[0], stuff[1], stuff[2], null);
-						if(config.getObjective() != null) {
-							user.sendMsg(ChatColor.GOLD + "Objective: " + ChatColor.GRAY + config.getObjective());
+						Quest quest = new Quest(user.getQuest());
+						if(quest.getObjective() != null) {
+							user.sendMsg(ChatColor.GOLD + "Objective: " + ChatColor.GRAY + quest.getObjective());
 						}else{user.sendMsg(ChatColor.DARK_RED + "This quest does not exist! Please notify a admin!");}
 					}else{
 						user.sendMsg(ChatColor.RED + "You do not have a active quest!");
@@ -69,8 +61,9 @@ public class rpgCommand implements CommandExecutor {
 				if(args.length == 1) {
 					if(args[0].equalsIgnoreCase("reload")) {
 						Api.loadConfig();
-						Api.loadDatabase();
-						user.sendMsg(ChatColor.GOLD + "Successfully reloaded the Database and Config file!");
+						Api.getMySQL().close();
+						Api.getMySQL().open();
+						user.sendMsg(ChatColor.GOLD + "Successfully reloaded the Config file and refreshed MySQL!");
 					}
 					if(args[0].equalsIgnoreCase("help")) {
 						user.sendMsg(ChatColor.GOLD + " _______________________________");
@@ -93,23 +86,22 @@ public class rpgCommand implements CommandExecutor {
 						user.sendMsg(ChatColor.BLUE + "1.) /rpg resetlocation  2.) Left click button");
 						user.sendMsg(ChatColor.BLUE + "3.) /rpg setlocation");
 						user.sendMsg(ChatColor.DARK_RED + "How to edit the objective for a quest");
-						user.sendMsg(ChatColor.BLUE + "1.) /rpg setobjective <npc name> <region> <quest name> 2.) In chat type your objective");
+						user.sendMsg(ChatColor.BLUE + "1.) /rpg setobjective <npc id> 2.) In chat type your objective");
 					}
 					if(args[0].equalsIgnoreCase("setlocation")) {
 						if(Api.getPlayers().contains(user.getName())) {
 							String loc = player.getWorld().getName() + "," + player.getLocation().getX() + "," + player.getLocation().getY() + "," + player.getLocation().getZ() + "," + player.getLocation().getYaw() + "," + player.getLocation().getPitch();
-							Conf config = new Conf(null, null, null, Api.getLocation());
-							config.setButtonLocation(loc);
-							config.save();
+							Button config = new Button(Api.getButtonLocation());
+							config.addButton(Api.getName(), Api.getMessage(), Api.getButtonLocation(), loc);
+							Api.poop1 = "";
 							Api.getPlayers().remove(user.getName());
 							user.sendMsg(ChatColor.GOLD + "Successfully created a button!");
 							return false;
 						}
 						if(Api.getPl().contains(user.getName())) {
 							String loc = player.getWorld().getName() + "," + player.getLocation().getX() + "," + player.getLocation().getY() + "," + player.getLocation().getZ() + "," + player.getLocation().getYaw() + "," + player.getLocation().getPitch();
-							Conf config = new Conf(null, null, null, Api.getLocation());
+							Button config = new Button(loc);
 							config.setButtonLocation(loc);
-							config.save();
 							Api.getPl().remove(user.getName());
 							user.sendMsg(ChatColor.GOLD + "Successfully reset the location of the button!");
 							return false;
@@ -164,8 +156,9 @@ public class rpgCommand implements CommandExecutor {
 						}
 					}
 					if(args[0].equalsIgnoreCase("setobjective")) {
-						Api.object1 = args[1] + "," + args[2] + "," + args[3];
-						if(Api.getConfig().isSet("Quests." + args[1] + "." + args[2] + "." + args[3])) {
+						Api.object1 = args[1];
+						Quest quest = new Quest(Integer.parseInt(args[1]));
+						if(quest.getQuestName() != null) {
 							if(Api.getObject().contains(user.getName())) {
 								Api.getObject().add(user.getName());
 								user.sendMsg(ChatColor.GREEN + "Type into the chat your objective for the quest");
@@ -192,22 +185,23 @@ public class rpgCommand implements CommandExecutor {
 						}user.sendMsg(ChatColor.RED + "Quest does not exist!");
 					}
 				}
-				// /rpg newquest <npcname> <region> <Quest Name> <Reward> <Requirement> <amount> <Objective>
-				if(args.length > 6) {
+				//        0          1        2          3       4     5		6
+				// /rpg newquest <npcid> <questname> <Money> <Item> <amount> <Objective>
+				if(args.length >= 5) {
 					if(args[0].equalsIgnoreCase("newquest")) {
-						String name = args[1];
-						String region = args[2];
-						String quest = args[3];
-						double reward = Double.parseDouble(args[4]);
-						String requirement = args[5];
-						int amount = Integer.parseInt(args[6]);
-						String objective = Api.compileArgs(args, 7);
-						// Up are varibles || Down executed
-						String start = "Quests." + name + "." + region + "." + quest;
-						if(Api.getConfig().isSet(start)) {
-							user.sendMsg(ChatColor.DARK_RED + "That quest already exists!");
+						Quest quest;
+						try {
+							quest = new Quest(Integer.parseInt(args[1]));
+						} catch (Exception e) {
+							player.sendMessage(ChatColor.RED + "Please use a Number for the ID in arg 1 *after newquest*");
 							return false;
-						}start = start.concat(".");
+						}
+						String name = args[2].replace("_", " ");
+						double reward = Double.parseDouble(args[3]);
+						String requirement = args[4];
+						int amount = Integer.parseInt(args[5]);
+						String objective = Api.compileArgs(args, 6);
+						// Up are varibles || Down executed
 						Material mat = null;
 						if(isInt(requirement) == true) {
 							mat = Material.getMaterial(Integer.valueOf(requirement));
@@ -218,17 +212,17 @@ public class rpgCommand implements CommandExecutor {
 							user.sendMsg(ChatColor.DARK_RED + "Item does not exist!");
 							return false;
 						}
-						int questid = Api.getConfig().getInt("Quest") + 1;
-						ItemStack item = new ItemStack(mat, amount);
-						Api.getConfig().set(start + "Quest.Name", quest.replace("_", " "));
-						Api.getConfig().set(start + "Quest.Objective", objective);
-						Api.getConfig().set(start + "Quest.QuestId", questid);
-						Api.getConfig().set(start + "Stuff.NPC_Name", name);
-						Api.getConfig().set(start + "Stuff.WorldGuard_Region", region);
-						Api.getConfig().set(start + "Reward.Money", reward);
-						Api.getConfig().set(start + "Requirements.Item", item);
-						Api.getConfig().set("Quest", questid);
-						Api.saveConfig();
+						short data = 0;
+						if(requirement.contains(":")) {
+							String[] d = requirement.split(":");
+							data = Short.parseShort(d[1]);
+						}
+						ItemStack item = new ItemStack(mat, amount, data);
+						if(quest.getQuestName() != null) {
+							quest.addQuest(Integer.parseInt(args[1]), name, objective, reward, item, 1);
+							return false;
+						}
+						quest.addQuest(Integer.parseInt(args[1]), name, objective, reward, item, 0);
 						user.sendMsg(ChatColor.GOLD + "Successfully saved quest!");
 					}
 				}
